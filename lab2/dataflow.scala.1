@@ -7,7 +7,6 @@ case class Start();
 case class Stop();
 case class Ready();
 case class Go();
-case class Done();
 case class Change(in: BitSet);
 
 class Random(seed: Int) {
@@ -36,22 +35,10 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         started += 1;
         //println("controller has seen " + started);
         if (started == cfg.length) {
-          cfg.map(_!new Go);
+          for (u <- cfg)
+            u ! new Go;
         }
         act();
-      }
-      case Done() => {
-        started -= 1;
-        if(started == 0){
-          cfg.map(_! new Stop);
-
-          cfg.map(_.print);
-
-
-
-        }
-        else
-          act();
       }
     }
   }
@@ -76,37 +63,16 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     react {
       case Start() => {
         controller ! new Ready;
-//        println("started " + index);
+        //println("started " + index);
         act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-
-        for (v <- succ) yield out.or(v.in);
-        //--------- from java -----------
-        val old = in;
-
-    		// in = use U (out - def)
-
-    		in = new BitSet();
-    		in.or(out);
-    		in.andNot(defs);
-    		in.or(uses);
-
-        //---------------
-        if (!in.equals(old)) {
-            pred.map(_ ! Go);
-        }
-
-        controller ! new Done;
         act();
       }
 
-      case Stop()  => {
-        //println("stopped " + index);
-
-      }
+      case Stop()  => { }
     }
   }
 
@@ -190,11 +156,9 @@ object Driver {
 
     for (i <- 0 until nvertex)
       cfg(i) ! new Start;
-/**
+
     if (print != 0)
       for (i <- 0 until nvertex)
-        cfg(i).print
-
-        */
+        cfg(i).print;
   }
 }

@@ -1,15 +1,15 @@
-import scala.actors._
+import scala.actors._;
 import java.util.BitSet;
 
 // LAB 2: some case classes but you need additional ones too.
-
+case class RequestIndata();
 case class Start();
 case class Stop();
 case class Ready();
 case class Go();
-case class Done();
 case class Change(in: BitSet);
 
+// random with seed
 class Random(seed: Int) {
         var w = seed + 1;
         var z = seed * seed + seed + 2;
@@ -23,6 +23,7 @@ class Random(seed: Int) {
         }
 }
 
+// controller actor
 class Controller(val cfg: Array[Vertex]) extends Actor {
   var started = 0;
   val begin   = System.currentTimeMillis();
@@ -36,76 +37,69 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         started += 1;
         //println("controller has seen " + started);
         if (started == cfg.length) {
-          cfg.map(_!new Go);
+          for (u <- cfg)
+            u ! new Go;
         }
         act();
-      }
-      case Done() => {
-        started -= 1;
-        if(started == 0){
-          cfg.map(_! new Stop);
-
-          cfg.map(_.print);
-
-
-
-        }
-        else
-          act();
       }
     }
   }
 }
 
-class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
-  var pred: List[Vertex] = List();
+
+// vertex is also an actor
   var succ: List[Vertex] = List();
   val uses               = new BitSet(s);
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
   var out                = new BitSet(s);
 
-  def connect(that: Vertex)
-  {
+// make the connection between vertex.
+  def connect(that: Vertex){
     //println(this.index + "->" + that.index);
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
 
+//
   def act() {
     react {
+
+
+      case RequestIndata(sender: Vertex) => {
+        //println("requested data from " + sender)
+        sender ! (in);
+      }
       case Start() => {
         controller ! new Ready;
-//        println("started " + index);
+        println("started " + index);
         act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
 
-        for (v <- succ) yield out.or(v.in);
-        //--------- from java -----------
-        val old = in;
+        /**
+        		iter = succ.listIterator();
+        		while (iter.hasNext()) {
+        			v = iter.next();
+        			out.or(v.in);
+        		}
+        */
 
-    		// in = use U (out - def)
+        // we request all in data and work
+        // with future to opmiize some time
+        val future = succ.v.in ? RequestIndata()
+        ma
 
-    		in = new BitSet();
-    		in.or(out);
-    		in.andNot(defs);
-    		in.or(uses);
 
-        //---------------
-        if (!in.equals(old)) {
-            pred.map(_ ! Go);
-        }
 
-        controller ! new Done;
+
+
         act();
       }
 
       case Stop()  => {
-        //println("stopped " + index);
-
       }
     }
   }
@@ -190,11 +184,9 @@ object Driver {
 
     for (i <- 0 until nvertex)
       cfg(i) ! new Start;
-/**
+
     if (print != 0)
       for (i <- 0 until nvertex)
-        cfg(i).print
-
-        */
+        cfg(i).print;
   }
 }
