@@ -1,32 +1,34 @@
-import scala.actors._;
+import scala.actors._
 import java.util.BitSet;
 
 // LAB 2: some case classes but you need additional ones too.
-case class RequestIndata();
+
 case class Start();
 case class Stop();
 case class Ready();
 case class Go();
 case class Change(in: BitSet);
 
-// random with seed
+case class Work()
+case class Break()
+
 class Random(seed: Int) {
-        var w = seed + 1;
-        var z = seed * seed + seed + 2;
+  var w = seed + 1;
+  var z = seed * seed + seed + 2;
 
-        def nextInt() =
-        {
-                z = 36969 * (z & 65535) + (z >> 16);
-                w = 18000 * (w & 65535) + (w >> 16);
+  def nextInt() =
+    {
+      z = 36969 * (z & 65535) + (z >> 16);
+      w = 18000 * (w & 65535) + (w >> 16);
 
-                (z << 16) + w;
-        }
+      (z << 16) + w;
+    }
 }
 
-// controller actor
 class Controller(val cfg: Array[Vertex]) extends Actor {
-  var started = 0;
-  val begin   = System.currentTimeMillis();
+  var started = 0
+  val begin = System.currentTimeMillis()
+  var working = 0
 
   // LAB 2: The controller must figure out when
   //        to terminate all actors somehow.
@@ -34,72 +36,88 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
   def act() {
     react {
       case Ready() => {
-        started += 1;
+        started += 1
         //println("controller has seen " + started);
         if (started == cfg.length) {
           for (u <- cfg)
-            u ! new Go;
+            u ! new Go
         }
-        act();
+        act()
+      }
+      case Work() => {
+        working += 1
+        act()
+      }
+      case Break() => {
+        working -= 1
+        if (working > 0) {
+          act()
+        } else {
+          for (u <- cfg) {
+            u ! new Stop
+          }
+          for (v <- cfg)
+            v.print
+        }
       }
     }
   }
 }
 
-
-// vertex is also an actor
+class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
+  var pred: List[Vertex] = List();
   var succ: List[Vertex] = List();
-  val uses               = new BitSet(s);
-  val defs               = new BitSet(s);
-  var in                 = new BitSet(s);
-  var out                = new BitSet(s);
+  val uses = new BitSet(s);
+  val defs = new BitSet(s);
+  var in = new BitSet(s);
+  var out = new BitSet(s);
 
-// make the connection between vertex.
-  def connect(that: Vertex){
+  def connect(that: Vertex) {
     //println(this.index + "->" + that.index);
     this.succ = that :: this.succ;
     that.pred = this :: that.pred;
   }
 
-//
   def act() {
     react {
-
-
-      case RequestIndata(sender: Vertex) => {
-        //println("requested data from " + sender)
-        sender ! (in);
-      }
       case Start() => {
         controller ! new Ready;
-        println("started " + index);
+        //println("started " + index);
         act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-
-        /**
-        		iter = succ.listIterator();
-        		while (iter.hasNext()) {
-        			v = iter.next();
-        			out.or(v.in);
-        		}
-        */
-
-        // we request all in data and work
-        // with future to opmiize some time
-        val future = succ.v.in ? RequestIndata()
-        ma
-
-
-
-
-
-        act();
+        controller ! new Work
+        computeIn(new BitSet())
+        controller ! new Break
+        act()
       }
 
-      case Stop()  => {
+      case Change(in: BitSet) => {
+        controller ! new Work
+        computeIn(in)
+        controller ! new Break
+        act()
+      }
+
+      case Stop() => {}
+    }
+  }
+
+  def computeIn(succIn: BitSet) = {
+    out.or(succIn)
+
+    val old = in
+
+    in = new BitSet(s)
+    in.or(out)
+    in.andNot(defs)
+    in.or(uses)
+
+    if (in != old) {
+      for (v <- pred) {
+        v ! new Change(in)
       }
     }
   }
@@ -116,14 +134,15 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
     printSet("use", index, uses);
     printSet("def", index, defs);
     printSet("in", index, in);
+    printSet("out", index, out)
     println("");
   }
 }
 
 object Driver {
-  val rand    = new Random(1);
+  val rand = new Random(1);
   var nactive = 0;
-  var nsym    = 0;
+  var nsym = 0;
   var nvertex = 0;
   var maxsucc = 0;
 
@@ -159,25 +178,25 @@ object Driver {
   }
 
   def main(args: Array[String]) {
-    nsym           = args(0).toInt;
-    nvertex        = args(1).toInt;
-    maxsucc        = args(2).toInt;
-    nactive        = args(3).toInt;
-    val print      = args(4).toInt;
-    val cfg        = new Array[Vertex](nvertex);
+    nsym = args(0).toInt;
+    nvertex = args(1).toInt;
+    maxsucc = args(2).toInt;
+    nactive = args(3).toInt;
+    val print = args(4).toInt;
+    val cfg = new Array[Vertex](nvertex);
     val controller = new Controller(cfg);
 
     controller.start;
 
-    println("generating CFG...");
+    //println("generating CFG...");
     for (i <- 0 until nvertex)
       cfg(i) = new Vertex(i, nsym, controller);
 
     makeCFG(cfg);
-    println("generating usedefs...");
+    //println("generating usedefs...");
     makeUseDef(cfg);
 
-    println("starting " + nvertex + " actors...");
+    //println("starting " + nvertex + " actors...");
 
     for (i <- 0 until nvertex)
       cfg(i).start;
@@ -185,8 +204,8 @@ object Driver {
     for (i <- 0 until nvertex)
       cfg(i) ! new Start;
 
-    if (print != 0)
-      for (i <- 0 until nvertex)
-        cfg(i).print;
+    // if (print != 0)
+    //   for (i <- 0 until nvertex)
+    //     cfg(i).print;
   }
 }

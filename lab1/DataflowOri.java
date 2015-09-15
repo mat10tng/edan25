@@ -18,7 +18,7 @@ class Random {
 		z = 36969 * (z & 65535) + (z >> 16);
 		w = 18000 * (w & 65535) + (w >> 16);
 
-		return Math.abs((z << 16) + w);
+		return (z << 16) + w;
 	}
 }
 
