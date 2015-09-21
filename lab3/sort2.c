@@ -176,7 +176,7 @@ int main(int ac, char** av)
 	end = sec();
 
 
-	printf("%1.2f s\n", (end - start)/CLOCKS_PER_SEC );
+	printf("%1.2f s\n", (end - start) );
 #ifdef ASSERT
 	for(i = 0; i < n ; i++){
 		if(a[i] != b[i]){
