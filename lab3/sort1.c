@@ -10,18 +10,29 @@
 
 #define ASSERT
 
+pthread_mutex_t thread_sum ;
+// limit of numbers of thread 
+static int limit = 4;
+// current number of thread
+int n_thread = 1;
+
+
+
+static double sec(void)
+{
+	struct timeval t;
+	gettimeofday(&t,NULL);
+	return t.tv_sec + (t.tv_usec/1000000.0);
+}
+
+typedef int (*compare)(const void*, const void*);
+
 typedef struct arg_struct_t {
 	void* 		base; // listan
 	size_t		n;	// Number of elements in base.
 	size_t		s;	// Size of each element.
-	int		(*cmp)(const void*, const void*); // Behaves like strcmp
-	int 		once;
+	compare    		cmp_func; // Behaves like strcmp
 }arg_struct;
-
-static double sec(void)
-{
-	return clock();
-}
 
 void print(double* a, size_t size)
 {
@@ -38,56 +49,70 @@ void swap(double* left, double* right)
 	*right = temp; 
 }
 
-void insertion_sort(double* list, size_t n)
+void* merge(double* left, double* right,size_t n_left,size_t n_right)
 {
+	double current_min;
+	double*
+	size_t left_index = 0;
+	size_t right_index = 0;
+	while( n_index<n_left && n_right<n_right ) {
 
-} 
-//not use
-void merge_sort_rec(double* list, size_t n)
-{
-	if( n <= 6){
-		insertion_sort(list,n);
-		return;
-	}
-	size_t middle = n/2;
-	size_t left = 0;
-	size_t right = n - n/2;
-	merge_sort_rec(list, middle);
-	merge_sort_rec(&list[right], (n - middle));
-	// beware the range. It might kill you
-	size_t count = 0;
-}
-
-
-void par_sort(
-	void*		base,	// Array to sort.
-	size_t		n,	// Number of elements in base.
-	size_t		s,	// Size of each element.
-	int		(*cmp)(const void*, const void*), // Behaves like strcmp
-	int 		once 						)
-{
-	if(once == 1){
-		pthread_t thread;
-		// maybe need some counter for thread
-		arg_struct arg = {base,n,s,cmp,0};
-		if( pthread_create( &thread, NULL, par_sort,&arg ) ) {
-			fprintf(stderr,"Error creating thread\n");
-			exit;
+		if(cmp(left,right)){
+			swap(left,right)
 		}
 
+	}
+}
+
+void* par_sort( void* args )
+{
+	arg_struct arg1 = *(arg_struct*) args;
+	void* base 	= 	arg1.base; 	// base pointer
+	size_t n 	=	arg1.n;  	// number of elements in base
+	size_t s 	= 	arg1.s; 	// size of each element
+	compare cmp_func 	= arg1.cmp_func;
+
+	int split 	= 0; //get from mutex
+	pthread_mutex_lock (&thread_sum);
+   	if(n_thread < limit){
+   		split = 1;
+   		n_thread+=1;
+   	}
+   	pthread_mutex_unlock (&thread_sum);
+	 
+	if(split){
+		pthread_t thread;
+		size_t middle = n/2;
+		double pivot_element = base[n/2] 
+		arg_struct arg0 = 
+		{
+			base,
+			middle,
+			s,
+			cmp_func,
+		};
+		arg_struct arg1 = 
+		{ 	
+u7u7y			((char*) base) + middle , 
+			n - middle,
+			s ,
+			cmp_func
+		};
+
+		if( pthread_create( &thread, NULL, par_sort,&arg1 ) ) {
+			fprintf(stderr,"Error creating thread\n");
+		}
+		par_sort(&arg0);
 		// end thread run with pthread_join
 		if( pthread_join(thread,NULL) ){
 			fprintf(stderr,"Error joining thread\n");
-			exit;
 		}
-
+		//merge result
 	}else{
-		printf("anytthing\n");
-		print(base,n);
-		qsort(base, n, s , cmp);
-		print(base,n);
-		printf("thing should change here\n");
+		qsort(base,n,s,cmp_func);
 	}
+
+	return NULL;
 }
 int cmp_double(double a, double b){
 	return a < b ? -1 : a == b ? 0 : 1; 
@@ -106,7 +131,6 @@ static int cmp(const void* ap, const void* bp)
 int main(int ac, char** av)
 {
 	int		n = 2000000;
-	n = 5;
 	int		i;
 	double*		a;
 #ifdef ASSERT
@@ -130,15 +154,17 @@ int main(int ac, char** av)
 	}
 	start = sec();
 	
-	par_sort(a, n, sizeof a[0], cmp,1);
+	pthread_mutex_init(&thread_sum, NULL);
+
+
+	arg_struct arg = {a,n,sizeof a[0],cmp};
+	par_sort(&arg);
 #ifdef ASSERT
 	qsort(b, n, sizeof a[0] , cmp);
 #endif
 
 	end = sec();
 
-	print(a,n);
-	print(b,n);
 
 	printf("%1.2f s\n", (end - start)/CLOCKS_PER_SEC );
 #ifdef ASSERT
@@ -147,6 +173,8 @@ int main(int ac, char** av)
 	}
 #endif
 	free(a);
+	pthread_mutex_destroy(&thread_sum);
+	pthread_exit(NULL);
 #ifdef ASSERT
 	free(b);
 #endif
