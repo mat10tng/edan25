@@ -13,11 +13,9 @@ typedef int (*compare)(const void*, const void*);
 
 pthread_mutex_t thread_sum ;
 // limit of numbers of thread 
-static int limit = 4;
+static size_t limit = 4;
 // current number of thread
-int n_thread = 1;
-
-
+size_t n_thread = 1;
 
 static double sec(void)
 {
@@ -66,7 +64,13 @@ void swap(double* left, double* right)
 	*left = *right;
 	*right = temp; 
 }
-
+size_t sample_pivot(double* base, size_t size){
+	if(size > 200){
+		qsort(base,200,sizeof base[0],cmp);
+		return 100;
+	}
+	return 0;
+}
 int partition (double* base, size_t size)
 {	
 	size_t i;
@@ -74,10 +78,11 @@ int partition (double* base, size_t size)
 	size_t j;
 	i = 0;
 	if(size > 1){
+		swap(&base[size-1],&base[sample_pivot(base,size)]);
 		pivot = base[size-1];
+
 		for (j = 0; j < size-1; ++j){
 			if (base[j] <= pivot) {
-//				printf("%zu %zu \n", i , j);
 				swap(&base[i],&base[j]);
 				i += 1;
 			}
@@ -107,13 +112,14 @@ void* par_sort( void* args )
 	 
 	if(split && n > 5){
 		pthread_t thread;
-		int middle = partition(base,n);
+		size_t middle = partition(base,n);
 		if(middle == 0){
 			arg_struct arg0 = { ((double*) base) + 1, n-1, s, cmp_func};
 			par_sort(&arg0);
-			return;
+			return NULL;
 		}
 		printf("middle index is %zu of %zu ,percentage %1.2f\n", middle,n,middle*1.0 /n);
+		
 		arg_struct arg0 = { base, middle, s, cmp_func};
 		arg_struct arg1 = {	((double*) base) + middle + 1 , n - middle - 1 , s, cmp_func };
 		
@@ -127,6 +133,7 @@ void* par_sort( void* args )
 		}
 		//merge result
 	}else{
+		printf("i sort this %zu\n",n);
 		qsort(base,n,s,cmp_func);
 	}
 
@@ -159,24 +166,22 @@ int main(int ac, char** av)
 		b[i] = a[i];
 #endif
 	}
-	start = sec();
 	
 	pthread_mutex_init(&thread_sum, NULL);
 
 	arg_struct arg = {a,n,sizeof a[0],cmp};
+	start = sec();
 
 //	print(a,n);
-	printf("---before par sort---");
 	par_sort(&arg);
-	printf("---after par sort---");
+
+	printf("%1.2f s\n", (sec() - start) );
+	start = sec();
 #ifdef ASSERT
 	qsort(b, n, sizeof a[0] , cmp);
 #endif
+	printf("%1.2f s\n", (sec() - start) );
 
-	end = sec();
-
-
-	printf("%1.2f s\n", (end - start) );
 #ifdef ASSERT
 	for(i = 0; i < n ; i++){
 		if(a[i] != b[i]){
