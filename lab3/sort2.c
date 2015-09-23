@@ -12,7 +12,7 @@
 typedef int (*compare)(const void*, const void*);
 
 pthread_mutex_t thread_sum ;
-// limit of numbers of thread 
+// limit of numbers of thread
 static size_t limit = 4;
 // current number of thread
 size_t n_thread = 1;
@@ -27,10 +27,10 @@ static double sec(void)
 int cmp_double(double a, double b){
 	int result = a < b ? -1 : a == b ? 0 : 1;
 //	printf("%1.2f %d %1.2f\n",a,result,b);
-	return result; 
+	return result;
 }
 static int cmp(const void* ap, const void* bp)
-{	
+{
 	/* you need to modify this function to compare doubles. */
 	double a;
 	double b;
@@ -62,7 +62,7 @@ void swap(double* left, double* right)
 {
 	double temp = *left;
 	*left = *right;
-	*right = temp; 
+	*right = temp;
 }
 size_t sample_pivot(double* base, size_t size){
 	if(size > 200){
@@ -72,7 +72,7 @@ size_t sample_pivot(double* base, size_t size){
 	return 0;
 }
 int partition (double* base, size_t size)
-{	
+{
 	size_t i;
 	double pivot;
 	size_t j;
@@ -109,7 +109,7 @@ void* par_sort( void* args )
    		n_thread+=1;
    	}
    	pthread_mutex_unlock (&thread_sum);
-	 
+
 	if(split && n > 5){
 		pthread_t thread;
 		size_t middle = partition(base,n);
@@ -119,10 +119,10 @@ void* par_sort( void* args )
 			return NULL;
 		}
 		printf("middle index is %zu of %zu ,percentage %1.2f\n", middle,n,middle*1.0 /n);
-		
+
 		arg_struct arg0 = { base, middle, s, cmp_func};
 		arg_struct arg1 = {	((double*) base) + middle + 1 , n - middle - 1 , s, cmp_func };
-		
+
 		if( pthread_create( &thread, NULL, par_sort,&arg1 ) ) {
 			fprintf(stderr,"Error creating thread\n");
 		}
@@ -144,7 +144,7 @@ void* par_sort( void* args )
 
 int main(int ac, char** av)
 {
-	int		n = 2000000;
+	int		n = 20000;
 	int		i;
 	double*		a;
 #ifdef ASSERT
@@ -166,7 +166,7 @@ int main(int ac, char** av)
 		b[i] = a[i];
 #endif
 	}
-	
+
 	pthread_mutex_init(&thread_sum, NULL);
 
 	arg_struct arg = {a,n,sizeof a[0],cmp};
@@ -175,12 +175,12 @@ int main(int ac, char** av)
 //	print(a,n);
 	par_sort(&arg);
 
-	printf("%1.2f s\n", (sec() - start) );
+	printf("par: %1.5f s\n", (sec() - start) );
 	start = sec();
 #ifdef ASSERT
 	qsort(b, n, sizeof a[0] , cmp);
 #endif
-	printf("%1.2f s\n", (sec() - start) );
+	printf("seq: %1.5f s\n", (sec() - start) );
 
 #ifdef ASSERT
 	for(i = 0; i < n ; i++){
