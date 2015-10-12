@@ -14,7 +14,7 @@ LDFLAGS		= -lpthread
 S=10000
 V=10000
 U=4
-A=100
+A=1000
 T=4
 P=0
 
