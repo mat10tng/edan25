@@ -33,7 +33,8 @@ public:
 
 	void reset()
 	{
-		total = 0;
+		tota
+		l = 0;
 		memset(a, 0, n*sizeof a[0]);
 	}
 
@@ -51,7 +52,7 @@ public:
 	{
 		int				i;
 		int				num;
-		bool				cont;
+		bool			cont;
 
 		cont = true;
 		while(cont) {

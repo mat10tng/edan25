@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 	size_t		max_succ;
 	cfg_t*		cfg;
 	bool		print;
-	int		seed = 0;
+	int		seed = 1;
 
 	progname	= argv[0];
 
