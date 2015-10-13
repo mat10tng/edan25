@@ -173,12 +173,14 @@ void* compute(void* arg)
 			p = h = u->pred;
 			do {
 				v = p->data;
-				if (!v->listed) {
+
 				pthread_mutex_lock(&worklist_mutex);
+				if (!v->listed) {
 					v->listed = true;
 					insert_last(worklist, v);
-				pthread_mutex_unlock(&worklist_mutex);
 				}
+				pthread_mutex_unlock(&worklist_mutex);
+
 				p = p->succ;
 			} while (p != h);
 		}
