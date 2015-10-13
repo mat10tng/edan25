@@ -152,7 +152,7 @@ void* compute(void* arg)
 		workload += 1;
 		u->listed = false;
 		pthread_mutex_unlock(&worklist_mutex);
-
+		
 		reset(u->set[OUT]);
 
 		for (j = 0; j < u->nsucc; ++j){
@@ -161,10 +161,10 @@ void* compute(void* arg)
 			pthread_mutex_unlock(&u->succ[j]->available);
 		}
 
-		pthread_mutex_lock(&u->available);	
 		prev = u->prev;
 		u->prev = u->set[IN];
 		u->set[IN] = prev;
+		pthread_mutex_lock(&u->available);	
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
 		cond = u->pred != NULL && !equal(u->prev, u->set[IN]);
 		pthread_mutex_unlock(&u->available);
